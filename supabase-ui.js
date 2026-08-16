@@ -19,7 +19,7 @@
   document.body.replaceChildren(root);
 
   function layout(content, signedIn = false) {
-    root.innerHTML = `<div class="bb-shell"><header class="bb-top"><div><button id="bb-home" class="bb-logo" type="button" aria-label="Birdie Board home" style="border:0;padding:0;background:transparent;color:#fff;cursor:pointer;text-align:left">Birdie <i>Board</i></button></div>${signedIn ? '<button id="bb-logout" class="bb-user">Sign out</button>' : ''}</header>${content}</div>`;
+    root.innerHTML = `<div class="bb-shell"><header class="bb-top"><div><button id="bb-home" class="bb-logo" type="button" aria-label="Birdie Board home" style="border:0;padding:0;background:transparent;color:#fff;cursor:pointer;text-align:left;font:700 italic 44px/.78 'Cormorant Garamond',serif;letter-spacing:-2px">Birdie <i>Board</i></button></div>${signedIn ? '<button id="bb-logout" class="bb-user">Sign out</button>' : ''}</header>${content}</div>`;
     document.getElementById('bb-home').addEventListener('click', () => currentUser ? loadDashboard() : showAuth());
     document.getElementById('bb-logout')?.addEventListener('click', async () => { await supabase.auth.signOut(); });
   }
