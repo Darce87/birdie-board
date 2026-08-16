@@ -22,7 +22,7 @@
   }
 
   function showAuth(message = '') {
-    layout(`<section class="bb-card"><p class="bb-kicker">WELCOME TO THE CLUBHOUSE</p><h2>Live golf scoring.</h2><p class="bb-muted">Create an account to organise rounds, enter scores, and follow the leaderboard in real time.</p><div id="bb-auth-error" class="bb-error">${message}</div><form id="bb-auth-form"><label class="bb-field">Email<input id="bb-email" type="email" autocomplete="email" required></label><label class="bb-field">Password<input id="bb-password" type="password" autocomplete="current-password" minlength="8" required></label><div class="bb-row"><button id="bb-signin" class="bb-primary" type="submit">Sign in</button><button id="bb-signup" class="bb-secondary" type="button">Create account</button></div></form></section>`);
+    layout(`<section class="bb-card"><p class="bb-kicker">WELCOME TO THE CLUBHOUSE</p><h2>Live golf scoring.</h2><p class="bb-muted">Create an account to organise rounds, enter scores, and follow the leaderboard in real time.</p><div id="bb-auth-error" class="bb-error">${message}</div><form id="bb-auth-form"><label class="bb-field">First name <small class="bb-muted">(new accounts)</small><input id="bb-first-name" type="text" autocomplete="given-name" maxlength="60"></label><label class="bb-field">Last name <small class="bb-muted">(new accounts)</small><input id="bb-last-name" type="text" autocomplete="family-name" maxlength="80"></label><label class="bb-field">Exact handicap <small class="bb-muted">(new accounts)</small><input id="bb-handicap" type="number" min="0" max="54" step="0.1" inputmode="decimal"></label><label class="bb-field">Email<input id="bb-email" type="email" autocomplete="email" required></label><label class="bb-field">Password<input id="bb-password" type="password" autocomplete="current-password" minlength="8" required></label><div class="bb-row"><button id="bb-signin" class="bb-primary" type="submit">Sign in</button><button id="bb-signup" class="bb-secondary" type="button">Create account</button></div></form></section>`);
     const form = document.getElementById('bb-auth-form');
     const error = document.getElementById('bb-auth-error');
     form.addEventListener('submit', async (event) => {
@@ -31,18 +31,26 @@
       error.textContent = signInError ? signInError.message : '';
     });
     document.getElementById('bb-signup').addEventListener('click', async () => {
+      const firstName = document.getElementById('bb-first-name').value.trim(); const lastName = document.getElementById('bb-last-name').value.trim(); const handicap = Number(document.getElementById('bb-handicap').value);
+      if (!firstName || !lastName || !Number.isFinite(handicap) || handicap < 0 || handicap > 54) { error.textContent = 'Enter your first name, last name, and exact handicap to create an account.'; return; }
       error.textContent = 'Creating account…';
-      const { error: signUpError } = await supabase.auth.signUp({ email: document.getElementById('bb-email').value, password: document.getElementById('bb-password').value, options: { emailRedirectTo: 'https://darce87.github.io/birdie-board/' } });
+      const { error: signUpError } = await supabase.auth.signUp({ email: document.getElementById('bb-email').value, password: document.getElementById('bb-password').value, options: { data: { first_name: firstName, last_name: lastName, handicap: String(handicap), display_name: `${firstName} ${lastName}` }, emailRedirectTo: 'https://darce87.github.io/birdie-board/' } });
       error.textContent = signUpError ? signUpError.message : 'Check your email to confirm your account, then sign in.';
     });
   }
 
+  function showProfileSetup(profile = {}) {
+    layout(`<section class="bb-card"><p class="bb-kicker">YOUR PLAYER PROFILE</p><h2>Let’s get your details right.</h2><p class="bb-muted">Your name and exact handicap are used when you enter and score tournaments.</p><div id="bb-profile-error" class="bb-error"></div><form id="bb-profile-form"><label class="bb-field">First name<input id="bb-profile-first" type="text" required maxlength="60" value="${escapeHtml(profile.first_name || '')}"></label><label class="bb-field">Last name<input id="bb-profile-last" type="text" required maxlength="80" value="${escapeHtml(profile.last_name || '')}"></label><label class="bb-field">Exact handicap<input id="bb-profile-handicap" type="number" min="0" max="54" step="0.1" required value="${profile.handicap ?? ''}"></label><button class="bb-primary" type="submit">Save profile</button></form></section>`, true);
+    document.getElementById('bb-profile-form').addEventListener('submit', async event => { event.preventDefault(); const error = document.getElementById('bb-profile-error'); const firstName = document.getElementById('bb-profile-first').value.trim(); const lastName = document.getElementById('bb-profile-last').value.trim(); const handicap = Number(document.getElementById('bb-profile-handicap').value); if (!firstName || !lastName || !Number.isFinite(handicap) || handicap < 0 || handicap > 54) { error.textContent = 'Enter a valid name and handicap.'; return; } const { error: updateError } = await supabase.from('profiles').update({ first_name: firstName, last_name: lastName, display_name: `${firstName} ${lastName}`, handicap }).eq('id', currentUser.id); error.textContent = updateError ? updateError.message : ''; if (!updateError) loadDashboard(); });
+  }
+
   async function loadDashboard() {
-    const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', currentUser.id).single();
+    const { data: profile } = await supabase.from('profiles').select('display_name,first_name,last_name,handicap').eq('id', currentUser.id).single();
+    if (!profile?.first_name || !profile?.last_name || profile.handicap === null) { showProfileSetup(profile); return; }
     const { data: memberships, error } = await supabase.from('tournament_members').select('role, tournament_id, tournaments(id,name,status,starts_at,courses(name))').eq('user_id', currentUser.id).order('joined_at', { ascending: false });
     if (error) { layout(`<p class="bb-error">${error.message}</p>`, true); return; }
     const cards = (memberships || []).map(({ role, tournaments }) => tournaments ? `<button class="bb-tournament" data-open-tournament="${tournaments.id}"><span><b>${escapeHtml(tournaments.name)}</b><small>${escapeHtml(tournaments.courses?.name || 'Course pending')} · ${tournaments.starts_at ? new Date(tournaments.starts_at).toLocaleDateString() : 'Date pending'}</small></span><span class="bb-status">${escapeHtml(tournaments.status)}</span></button>` : '').join('') || '<p class="bb-muted">No tournaments yet. Create your first live round.</p>';
-    layout(`<section class="bb-card"><p class="bb-kicker">WELCOME BACK</p><h2>${escapeHtml(profile?.display_name || 'Player')}</h2><p class="bb-muted">Your private tournaments and live scoreboards.</p><button id="bb-create" class="bb-primary">Create tournament</button></section><section class="bb-card"><p class="bb-kicker">MY TOURNAMENTS</p>${cards}</section>`, true);
+    layout(`<section class="bb-card"><p class="bb-kicker">WELCOME BACK</p><h2>${escapeHtml(profile.first_name)}</h2><p class="bb-muted">Your private tournaments and live scoreboards.</p><button id="bb-create" class="bb-primary">Create tournament</button></section><section class="bb-card"><p class="bb-kicker">MY TOURNAMENTS</p>${cards}</section>`, true);
     document.getElementById('bb-create').addEventListener('click', showCreateTournament);
     document.querySelectorAll('[data-open-tournament]').forEach(button => button.addEventListener('click', () => openTournament(button.dataset.openTournament)));
   }
