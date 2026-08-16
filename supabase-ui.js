@@ -6,6 +6,8 @@
   let currentUser = null;
   let currentTournamentId = null;
   let liveChannel = null;
+  let pendingSignUp = false;
+  const signUpCompleteMessage = 'Account created. Check your email to confirm it, then sign in.';
 
   document.title = 'Birdie Board';
   document.head.insertAdjacentHTML('beforeend', `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600;1,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
@@ -17,7 +19,8 @@
   document.body.replaceChildren(root);
 
   function layout(content, signedIn = false) {
-    root.innerHTML = `<div class="bb-shell"><header class="bb-top"><div><div class="bb-logo">Birdie <i>Board</i></div></div>${signedIn ? '<button id="bb-logout" class="bb-user">Sign out</button>' : ''}</header>${content}</div>`;
+    root.innerHTML = `<div class="bb-shell"><header class="bb-top"><div><button id="bb-home" class="bb-logo" type="button" aria-label="Birdie Board home" style="border:0;padding:0;background:transparent;color:#fff;cursor:pointer;text-align:left">Birdie <i>Board</i></button></div>${signedIn ? '<button id="bb-logout" class="bb-user">Sign out</button>' : ''}</header>${content}</div>`;
+    document.getElementById('bb-home').addEventListener('click', () => currentUser ? loadDashboard() : showAuth());
     document.getElementById('bb-logout')?.addEventListener('click', async () => { await supabase.auth.signOut(); });
   }
 
@@ -48,11 +51,12 @@
       const passwordConfirmationValue = document.getElementById('bb-password-confirm').value;
       if (!Number.isFinite(handicap) || handicap < 0 || handicap > 54) { error.textContent = 'Enter an exact handicap between 0 and 54.'; return; }
       if (password !== passwordConfirmationValue) { error.textContent = 'Your passwords do not match.'; return; }
+      pendingSignUp = true;
       error.textContent = 'Creating your account…';
       const { error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { first_name: firstName, last_name: lastName, handicap: String(handicap), display_name: `${firstName} ${lastName}` }, emailRedirectTo: 'https://darce87.github.io/birdie-board/' } });
-      if (signUpError) { error.textContent = signUpError.message; return; }
+      if (signUpError) { pendingSignUp = false; error.textContent = signUpError.message; return; }
       await supabase.auth.signOut();
-      showAuth('Account created. Check your email to confirm it, then sign in.');
+      if (pendingSignUp) { pendingSignUp = false; currentUser = null; showAuth(signUpCompleteMessage); }
     });
     if (signUp) document.getElementById('bb-back-to-signin').addEventListener('click', () => showAuth());
     else document.getElementById('bb-show-signup').addEventListener('click', () => showAuth('', 'signup'));
@@ -138,7 +142,18 @@
     console.error('Birdie Board session recovery error:', error);
     showAuth('Your saved session could not be restored. Please sign in again.');
   }
-  supabase.auth.onAuthStateChange((_event, sessionChange) => { currentUser = sessionChange?.user || null; if (liveChannel && !currentUser) { supabase.removeChannel(liveChannel); liveChannel = null; } if (currentUser) { loadDashboard().catch(error => showAuth(error.message)); } else { showAuth(); } });
+  supabase.auth.onAuthStateChange((_event, sessionChange) => {
+    if (pendingSignUp) {
+      if (sessionChange?.user) { void supabase.auth.signOut(); return; }
+      pendingSignUp = false;
+      currentUser = null;
+      showAuth(signUpCompleteMessage);
+      return;
+    }
+    currentUser = sessionChange?.user || null;
+    if (liveChannel && !currentUser) { supabase.removeChannel(liveChannel); liveChannel = null; }
+    if (currentUser) { loadDashboard().catch(error => showAuth(error.message)); } else { showAuth(); }
+  });
 })().catch(error => {
   console.error('Birdie Board startup error:', error);
   document.body.innerHTML = `<main style="min-height:100vh;background:#006747;color:#fff;padding:32px 22px;font-family:Arial,sans-serif"><h1 style="font-size:28px">Birdie Board</h1><p>We could not start the app. Please refresh and try again.</p><p style="color:#d8eee6;font-size:13px">${String(error.message || error)}</p></main>`;
