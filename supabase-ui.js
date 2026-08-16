@@ -113,4 +113,7 @@
   currentUser = session?.user || null;
   currentUser ? loadDashboard() : showAuth();
   supabase.auth.onAuthStateChange((_event, sessionChange) => { currentUser = sessionChange?.user || null; if (liveChannel && !currentUser) { supabase.removeChannel(liveChannel); liveChannel = null; } currentUser ? loadDashboard() : showAuth(); });
-})();
+})().catch(error => {
+  console.error('Birdie Board startup error:', error);
+  document.body.innerHTML = `<main style="min-height:100vh;background:#006747;color:#fff;padding:32px 22px;font-family:Arial,sans-serif"><h1 style="font-size:28px">Birdie Board</h1><p>We could not start the app. Please refresh and try again.</p><p style="color:#d8eee6;font-size:13px">${String(error.message || error)}</p></main>`;
+});
