@@ -17,12 +17,12 @@
   document.body.replaceChildren(root);
 
   function layout(content, signedIn = false) {
-    root.innerHTML = `<div class="bb-shell"><header class="bb-top"><div><p class="bb-kicker">LIVE GOLF SCORING</p><div class="bb-logo">Birdie <i>Board</i></div></div>${signedIn ? '<button id="bb-logout" class="bb-user">Sign out</button>' : ''}</header>${content}</div>`;
+    root.innerHTML = `<div class="bb-shell"><header class="bb-top"><div><div class="bb-logo">Birdie <i>Board</i></div></div>${signedIn ? '<button id="bb-logout" class="bb-user">Sign out</button>' : ''}</header>${content}</div>`;
     document.getElementById('bb-logout')?.addEventListener('click', async () => { await supabase.auth.signOut(); });
   }
 
   function showAuth(message = '') {
-    layout(`<section class="bb-card"><p class="bb-kicker">WELCOME TO THE CLUBHOUSE</p><h2>Golf tournaments,<br>live and secure.</h2><p class="bb-muted">Create an account to organise rounds, enter scores, and follow the leaderboard in real time.</p><div id="bb-auth-error" class="bb-error">${message}</div><form id="bb-auth-form"><label class="bb-field">Email<input id="bb-email" type="email" autocomplete="email" required></label><label class="bb-field">Password<input id="bb-password" type="password" autocomplete="current-password" minlength="8" required></label><div class="bb-row"><button id="bb-signin" class="bb-primary" type="submit">Sign in</button><button id="bb-signup" class="bb-secondary" type="button">Create account</button></div></form></section>`);
+    layout(`<section class="bb-card"><p class="bb-kicker">WELCOME TO THE CLUBHOUSE</p><h2>Live golf scoring.</h2><p class="bb-muted">Create an account to organise rounds, enter scores, and follow the leaderboard in real time.</p><div id="bb-auth-error" class="bb-error">${message}</div><form id="bb-auth-form"><label class="bb-field">Email<input id="bb-email" type="email" autocomplete="email" required></label><label class="bb-field">Password<input id="bb-password" type="password" autocomplete="current-password" minlength="8" required></label><div class="bb-row"><button id="bb-signin" class="bb-primary" type="submit">Sign in</button><button id="bb-signup" class="bb-secondary" type="button">Create account</button></div></form></section>`);
     const form = document.getElementById('bb-auth-form');
     const error = document.getElementById('bb-auth-error');
     form.addEventListener('submit', async (event) => {
