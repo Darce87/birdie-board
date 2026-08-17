@@ -171,6 +171,18 @@ create policy "Club members can view clubs" on public.clubs for select to authen
 drop policy if exists "Club members can view roster" on public.club_members;
 create policy "Club members can view roster" on public.club_members for select to authenticated using (public.is_club_member(club_id));
 
+drop policy if exists "Club members can view club tournaments" on public.tournaments;
+create policy "Club members can view club tournaments" on public.tournaments for select to authenticated using (club_id is not null and public.is_club_member(club_id));
+
+drop policy if exists "Club members can view each other's profiles" on public.profiles;
+create policy "Club members can view each other's profiles" on public.profiles for select to authenticated using (
+  id = (select auth.uid()) or exists (
+    select 1 from public.club_members mine
+    join public.club_members teammate on teammate.club_id = mine.club_id
+    where mine.user_id = (select auth.uid()) and teammate.user_id = profiles.id
+  )
+);
+
 drop policy if exists "Tournament members can view groups" on public.tournament_groups;
 create policy "Tournament members can view groups" on public.tournament_groups for select to authenticated using (public.can_view_tournament(tournament_id));
 drop policy if exists "Tournament members can view group members" on public.tournament_group_members;
