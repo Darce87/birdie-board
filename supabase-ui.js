@@ -53,7 +53,7 @@
       if (password !== passwordConfirmationValue) { error.textContent = 'Your passwords do not match.'; return; }
       pendingSignUp = true;
       error.textContent = 'Creating your account…';
-      const { error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { first_name: firstName, last_name: lastName, handicap: String(handicap), display_name: `${firstName} ${lastName}` }, emailRedirectTo: 'https://darce87.github.io/birdie-board/' } });
+      const { error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { first_name: firstName, last_name: lastName, handicap: String(handicap), display_name: `${firstName} ${lastName}` }, emailRedirectTo: 'https://birdieboard.uk/' } });
       if (signUpError) { pendingSignUp = false; error.textContent = signUpError.message; return; }
       await supabase.auth.signOut();
       if (pendingSignUp) { pendingSignUp = false; currentUser = null; showAuth(signUpCompleteMessage); }
