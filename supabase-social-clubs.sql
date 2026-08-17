@@ -40,7 +40,7 @@ as $$ select exists (select 1 from public.club_members where club_id = target_cl
 
 create or replace function public.is_club_organiser(target_club uuid)
 returns boolean language sql stable security definer set search_path = public
-as $$ select exists (select 1 from public.club_members where club_id = target_club and user_id = auth.uid() and role in ('owner','organizer','organiser','admin')) $$;
+as $$ select exists (select 1 from public.club_members where club_id = target_club and user_id = auth.uid() and role::text in ('owner','organiser','admin')) $$;
 
 create or replace function public.create_social_club(club_name text)
 returns jsonb language plpgsql security definer set search_path = public
@@ -54,7 +54,7 @@ begin
     exit when not exists (select 1 from public.clubs where invite_code = new_code);
   end loop;
   insert into public.clubs (name, created_by, invite_code) values (trim(club_name), auth.uid(), new_code) returning * into new_club;
-  insert into public.club_members (club_id, user_id, role) values (new_club.id, auth.uid(), 'organizer') on conflict do nothing;
+  insert into public.club_members (club_id, user_id, role) values (new_club.id, auth.uid(), 'organiser') on conflict do nothing;
   return jsonb_build_object('id', new_club.id, 'name', new_club.name, 'invite_code', new_code);
 end;
 $$;
