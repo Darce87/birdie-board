@@ -203,8 +203,13 @@ alter table public.score_overrides enable row level security;
 -- Club members can see their own club roster, but only server-side functions change membership.
 drop policy if exists "Club members can view clubs" on public.clubs;
 drop policy if exists "Club members can view roster" on public.club_members;
+drop policy if exists "Club members can view membership" on public.club_members;
 drop policy if exists "Club members can view club tournaments" on public.tournaments;
 drop policy if exists "Club members can view each other's profiles" on public.profiles;
+
+create policy "Users can view their own club memberships"
+on public.club_members for select to authenticated
+using (user_id = (select auth.uid()));
 
 drop policy if exists "Tournament members can view groups" on public.tournament_groups;
 create policy "Tournament members can view groups" on public.tournament_groups for select to authenticated using (public.can_view_tournament(tournament_id));
