@@ -72,6 +72,17 @@ begin
 end;
 $$;
 
+create or replace function public.get_my_social_clubs()
+returns table (id uuid, name text, invite_code text, role text)
+language sql security definer set search_path = public
+as $$
+  select c.id, c.name, c.invite_code, cm.role::text
+  from public.club_members cm
+  join public.clubs c on c.id = cm.club_id
+  where cm.user_id = auth.uid()
+  order by c.name;
+$$;
+
 create or replace function public.add_club_player_to_tournament(target_tournament uuid, target_player uuid, target_handicap numeric default null)
 returns void language plpgsql security definer set search_path = public
 as $$
@@ -192,6 +203,7 @@ create policy "Tournament members can view score overrides" on public.score_over
 
 revoke all on function public.create_social_club(text) from public;
 revoke all on function public.join_social_club(text) from public;
+revoke all on function public.get_my_social_clubs() from public;
 revoke all on function public.add_club_player_to_tournament(uuid,uuid,numeric) from public;
 revoke all on function public.create_playing_group(uuid,text,uuid,uuid[]) from public;
 revoke all on function public.save_group_scores(uuid,jsonb) from public;
@@ -199,4 +211,5 @@ revoke all on function public.set_score_override(uuid,uuid,int,int,text) from pu
 revoke all on function public.set_tournament_finalised(uuid,boolean) from public;
 revoke all on function public.delete_tournament(uuid) from public;
 grant execute on function public.create_social_club(text), public.join_social_club(text), public.add_club_player_to_tournament(uuid,uuid,numeric), public.create_playing_group(uuid,text,uuid,uuid[]), public.save_group_scores(uuid,jsonb), public.set_score_override(uuid,uuid,int,int,text), public.set_tournament_finalised(uuid,boolean) to authenticated;
+grant execute on function public.get_my_social_clubs() to authenticated;
 grant execute on function public.delete_tournament(uuid) to authenticated;
