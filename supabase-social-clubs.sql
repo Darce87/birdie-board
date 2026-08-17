@@ -40,7 +40,7 @@ as $$ select exists (select 1 from public.club_members where club_id = target_cl
 
 create or replace function public.is_club_organiser(target_club uuid)
 returns boolean language sql stable security definer set search_path = public
-as $$ select exists (select 1 from public.club_members where club_id = target_club and user_id = auth.uid() and role::text in ('owner','organiser','admin')) $$;
+as $$ select exists (select 1 from public.club_members where club_id = target_club and user_id = auth.uid() and role::text in ('owner','admin')) $$;
 
 create or replace function public.create_social_club(club_name text)
 returns jsonb language plpgsql security definer set search_path = public
@@ -53,8 +53,8 @@ begin
     new_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
     exit when not exists (select 1 from public.clubs where invite_code = new_code);
   end loop;
-  insert into public.clubs (name, created_by, invite_code) values (trim(club_name), auth.uid(), new_code) returning * into new_club;
-  insert into public.club_members (club_id, user_id, role) values (new_club.id, auth.uid(), 'organiser') on conflict do nothing;
+  insert into public.clubs (name, owner_id, invite_code) values (trim(club_name), auth.uid(), new_code) returning * into new_club;
+  insert into public.club_members (club_id, user_id, role) values (new_club.id, auth.uid(), 'owner') on conflict do nothing;
   return jsonb_build_object('id', new_club.id, 'name', new_club.name, 'invite_code', new_code);
 end;
 $$;
@@ -150,6 +150,17 @@ begin
 end;
 $$;
 
+create or replace function public.delete_tournament(target_tournament uuid)
+returns void language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.can_manage_tournament(target_tournament) then
+    raise exception 'Not authorised to delete this tournament';
+  end if;
+  delete from public.tournaments where id = target_tournament;
+end;
+$$;
+
 alter table public.tournament_groups enable row level security;
 alter table public.tournament_group_members enable row level security;
 alter table public.score_overrides enable row level security;
@@ -174,4 +185,6 @@ revoke all on function public.create_playing_group(uuid,text,uuid,uuid[]) from p
 revoke all on function public.save_group_scores(uuid,jsonb) from public;
 revoke all on function public.set_score_override(uuid,uuid,int,int,text) from public;
 revoke all on function public.set_tournament_finalised(uuid,boolean) from public;
+revoke all on function public.delete_tournament(uuid) from public;
 grant execute on function public.create_social_club(text), public.join_social_club(text), public.add_club_player_to_tournament(uuid,uuid,numeric), public.create_playing_group(uuid,text,uuid,uuid[]), public.save_group_scores(uuid,jsonb), public.set_score_override(uuid,uuid,int,int,text), public.set_tournament_finalised(uuid,boolean) to authenticated;
+grant execute on function public.delete_tournament(uuid) to authenticated;
