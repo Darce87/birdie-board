@@ -83,6 +83,30 @@ as $$
   order by c.name;
 $$;
 
+create or replace function public.get_social_club_members(target_club uuid)
+returns table (user_id uuid, role text, first_name text, last_name text, display_name text, handicap numeric)
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_club_member(target_club) then raise exception 'Not authorised to view this club'; end if;
+  return query select cm.user_id, cm.role::text, p.first_name, p.last_name, p.display_name, p.handicap
+  from public.club_members cm join public.profiles p on p.id = cm.user_id
+  where cm.club_id = target_club order by p.first_name, p.last_name;
+end;
+$$;
+
+create or replace function public.get_social_club_tournaments(target_club uuid)
+returns table (id uuid, name text, starts_at timestamptz, is_finalised boolean, course_name text)
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_club_member(target_club) then raise exception 'Not authorised to view this club'; end if;
+  return query select t.id, t.name, t.starts_at, t.is_finalised, c.name
+  from public.tournaments t left join public.courses c on c.id = t.course_id
+  where t.club_id = target_club order by t.starts_at desc nulls last;
+end;
+$$;
+
 create or replace function public.add_club_player_to_tournament(target_tournament uuid, target_player uuid, target_handicap numeric default null)
 returns void language plpgsql security definer set search_path = public
 as $$
@@ -178,21 +202,9 @@ alter table public.score_overrides enable row level security;
 
 -- Club members can see their own club roster, but only server-side functions change membership.
 drop policy if exists "Club members can view clubs" on public.clubs;
-create policy "Club members can view clubs" on public.clubs for select to authenticated using (public.is_club_member(id));
 drop policy if exists "Club members can view roster" on public.club_members;
-create policy "Club members can view roster" on public.club_members for select to authenticated using (public.is_club_member(club_id));
-
 drop policy if exists "Club members can view club tournaments" on public.tournaments;
-create policy "Club members can view club tournaments" on public.tournaments for select to authenticated using (club_id is not null and public.is_club_member(club_id));
-
 drop policy if exists "Club members can view each other's profiles" on public.profiles;
-create policy "Club members can view each other's profiles" on public.profiles for select to authenticated using (
-  id = (select auth.uid()) or exists (
-    select 1 from public.club_members mine
-    join public.club_members teammate on teammate.club_id = mine.club_id
-    where mine.user_id = (select auth.uid()) and teammate.user_id = profiles.id
-  )
-);
 
 drop policy if exists "Tournament members can view groups" on public.tournament_groups;
 create policy "Tournament members can view groups" on public.tournament_groups for select to authenticated using (public.can_view_tournament(tournament_id));
@@ -204,6 +216,8 @@ create policy "Tournament members can view score overrides" on public.score_over
 revoke all on function public.create_social_club(text) from public;
 revoke all on function public.join_social_club(text) from public;
 revoke all on function public.get_my_social_clubs() from public;
+revoke all on function public.get_social_club_members(uuid) from public;
+revoke all on function public.get_social_club_tournaments(uuid) from public;
 revoke all on function public.add_club_player_to_tournament(uuid,uuid,numeric) from public;
 revoke all on function public.create_playing_group(uuid,text,uuid,uuid[]) from public;
 revoke all on function public.save_group_scores(uuid,jsonb) from public;
@@ -212,4 +226,5 @@ revoke all on function public.set_tournament_finalised(uuid,boolean) from public
 revoke all on function public.delete_tournament(uuid) from public;
 grant execute on function public.create_social_club(text), public.join_social_club(text), public.add_club_player_to_tournament(uuid,uuid,numeric), public.create_playing_group(uuid,text,uuid,uuid[]), public.save_group_scores(uuid,jsonb), public.set_score_override(uuid,uuid,int,int,text), public.set_tournament_finalised(uuid,boolean) to authenticated;
 grant execute on function public.get_my_social_clubs() to authenticated;
+grant execute on function public.get_social_club_members(uuid), public.get_social_club_tournaments(uuid) to authenticated;
 grant execute on function public.delete_tournament(uuid) to authenticated;
