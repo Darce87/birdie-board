@@ -75,6 +75,10 @@ begin
     raise exception 'Not authorised to delete this tournament';
   end if;
 
+  if exists (select 1 from public.hole_scores where tournament_id = target_tournament) then
+    raise exception 'This event has scores recorded and cannot be deleted';
+  end if;
+
   delete from public.tournaments where id = target_tournament;
 end;
 $$;
