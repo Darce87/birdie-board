@@ -40,7 +40,7 @@
   async function override(x,tid){x.preventDefault();const{error}=await supabase.rpc('set_score_override',{target_tournament:tid,target_player:oplayer.value,target_hole:+ohole.value,target_points:+opoints.value,override_reason:oreason.value});if(error){manageerr.textContent=error.message;return}tournament(tid)}
   async function finalise(tid,on){if(on&&!confirm('Finalise and lock this tournament?'))return;const{error}=await supabase.rpc('set_tournament_finalised',{target_tournament:tid,should_finalise:on});if(error)alert(error.message);else tournament(tid)}
   const showAuth=auth,showPasswordRecovery=passwordRecovery,showNewPassword=newPassword,showDashboard=dashboard,showAccount=account,showClubDetail=clubDetail,showCreateClub=createClub,showJoinClub=joinClub,showCreateTournament=createTournament,showTournament=tournament;
-  auth=(message='',signup=false)=>{remember('auth',{message,signup});return showAuth(message,signup)};
+  auth=(message='',signup=false)=>{if(message==='Account created. Check your email to confirm it, then sign in.')message='Account created. Check your email — including your junk or spam folder — for the verification link, then sign in.';remember('auth',{message,signup});return showAuth(message,signup)};
   passwordRecovery=()=>{remember('passwordRecovery');return showPasswordRecovery()};
   newPassword=()=>{remember('newPassword');return showNewPassword()};
   dashboard=()=>{remember('dashboard');return showDashboard()};
