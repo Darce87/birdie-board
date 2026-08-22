@@ -201,3 +201,32 @@ $$;
 
 revoke all on function public.get_tournament_courses(uuid) from public;
 grant execute on function public.get_tournament_courses(uuid) to authenticated;
+
+create or replace function public.use_one_tournament_course(target_tournament uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  selected_course uuid;
+begin
+  if auth.uid() is null or not public.can_manage_tournament(target_tournament) then
+    raise exception 'Not authorised to edit this tournament';
+  end if;
+  select course_id into selected_course
+  from public.tournament_rounds
+  where tournament_id = target_tournament
+  order by round_number
+  limit 1;
+  if selected_course is null then
+    raise exception 'Tournament has no course';
+  end if;
+  update public.tournament_rounds
+  set course_id = selected_course
+  where tournament_id = target_tournament;
+end;
+$$;
+
+revoke all on function public.use_one_tournament_course(uuid) from public;
+grant execute on function public.use_one_tournament_course(uuid) to authenticated;
