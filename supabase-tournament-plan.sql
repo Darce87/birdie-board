@@ -7,6 +7,12 @@ create table if not exists public.tournament_courses (
   primary key (tournament_id, course_id)
 );
 
+-- This is a planning map, not a PostgREST relationship.  Keeping these two
+-- foreign keys would make Supabase see two routes from tournaments to courses.
+alter table public.tournament_courses
+  drop constraint if exists tournament_courses_tournament_id_fkey,
+  drop constraint if exists tournament_courses_course_id_fkey;
+
 insert into public.tournament_courses (tournament_id, course_id)
 select distinct tournament_id, course_id
 from public.tournament_rounds
@@ -230,3 +236,5 @@ $$;
 
 revoke all on function public.use_one_tournament_course(uuid) from public;
 grant execute on function public.use_one_tournament_course(uuid) to authenticated;
+
+notify pgrst, 'reload schema';
