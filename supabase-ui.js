@@ -84,11 +84,11 @@
   document.addEventListener('click',event=>{const button=event.target.closest('[data-edit-round]');if(button){event.preventDefault();editRound(button.dataset.editRound,history.state?.data?.id)}const groupButton=event.target.closest('[data-live-groups]');if(groupButton){event.preventDefault();liveGroups(groupButton.dataset.liveGroups,groupButton.dataset.liveEvent)}const openButton=event.target.closest('[data-live-open]');if(openButton){event.preventDefault();liveRound(openButton.dataset.liveOpen,openButton.dataset.liveEvent)}const startButton=event.target.closest('[data-live-start]');if(startButton){event.preventDefault();(async()=>{const{error}=await supabase.rpc('start_live_round',{target_round:startButton.dataset.liveStart});if(error){alert(error.message);return}liveRound(startButton.dataset.liveStart,startButton.dataset.liveEvent)})()}});
   window.addEventListener('popstate',event=>{const state=event.state;if(!state?.birdieBoard)return;const data=state.data||{};if(state.view==='auth')auth(data.message||'',!!data.signup);else if(state.view==='passwordRecovery')passwordRecovery();else if(state.view==='newPassword')newPassword();else if(state.view==='dashboard')dashboard();else if(state.view==='account')account();else if(state.view==='clubDetail')clubDetail(data.clubId);else if(state.view==='createClub')createClub();else if(state.view==='joinClub')joinClub();else if(state.view==='createTournament')createTournament(data.clubId);else if(state.view==='tournament')tournament(data.id)});
   const savedRoute=history.state?.birdieBoard?history.state:JSON.parse(sessionStorage.getItem('birdieBoardLastRoute')||'null');showAuth();const{data:{session}}=await supabase.auth.getSession();user=session?.user||null;if(user&&savedRoute?.birdieBoard)setTimeout(()=>{const data=savedRoute.data||{};if(savedRoute.view==='liveRound')liveRound(data.roundId,data.tournamentId);else if(savedRoute.view==='clubDetail')clubDetail(data.clubId);else if(savedRoute.view==='tournament')tournament(data.id);else if(savedRoute.view==='account')account();else if(savedRoute.view==='createClub')createClub();else if(savedRoute.view==='joinClub')joinClub();else if(savedRoute.view==='createTournament')createTournament(data.clubId);else dashboard()},0);else if(user)dashboard();else auth();supabase.auth.onAuthStateChange((event,s)=>{const hadUser=!!user;user=s?.user||null;if(event==='PASSWORD_RECOVERY'){newPassword();return}if(event==='SIGNED_OUT'){auth();return}if(event==='SIGNED_IN'&&!hadUser&&user)dashboard()});
-  let liveRefreshTimer=null;
+  let liveRefreshTimer=null,livePollBusy=false;
   const baseLiveRound=liveRound;
   liveRound=async(roundId,tournamentId)=>{
     remember('liveRound',{roundId,tournamentId});
-    clearTimeout(liveRefreshTimer);
+    clearInterval(liveRefreshTimer);
     await baseLiveRound(roundId,tournamentId);
     const nextHole=Number(sessionStorage.getItem(`birdieBoardNextHole-${roundId}`));
     const holePicker=document.getElementById('livehole');
@@ -99,8 +99,11 @@
     // Realtime is the primary update path. This light fallback keeps spectator
     // leaderboards current if a phone briefly misses a Realtime message.
     if(!document.querySelector('[data-live-score]')){
-      liveRefreshTimer=setTimeout(()=>{
-        if(document.querySelector('#bb .live-board')&&!document.querySelector('[data-live-score]'))liveRound(roundId,tournamentId);
+      liveRefreshTimer=setInterval(async()=>{
+        if(document.querySelector('#bb .live-board')&&!document.querySelector('[data-live-score]')&&!livePollBusy){
+          livePollBusy=true;
+          try{await baseLiveRound(roundId,tournamentId)}finally{livePollBusy=false}
+        }else if(!document.querySelector('#bb .live-board')||document.querySelector('[data-live-score]'))clearInterval(liveRefreshTimer);
       },3000);
     }
   };
