@@ -91,9 +91,12 @@
     clearInterval(liveRefreshTimer);
     await baseLiveRound(roundId,tournamentId);
     const nextHole=Number(sessionStorage.getItem(`birdieBoardNextHole-${roundId}`));
+    const activeHole=Number(sessionStorage.getItem(`birdieBoardActiveHole-${roundId}`));
+    const selectedHole=Number.isInteger(nextHole)&&nextHole>=1&&nextHole<=18?nextHole:activeHole;
     const holePicker=document.getElementById('livehole');
-    if(holePicker&&Number.isInteger(nextHole)&&nextHole>=1&&nextHole<=18){
-      holePicker.value=String(nextHole);holePicker.dispatchEvent(new Event('change',{bubbles:true}));
+    if(holePicker&&Number.isInteger(selectedHole)&&selectedHole>=1&&selectedHole<=18){
+      holePicker.value=String(selectedHole);holePicker.dispatchEvent(new Event('change',{bubbles:true}));
+      sessionStorage.setItem(`birdieBoardActiveHole-${roundId}`,String(selectedHole));
       sessionStorage.removeItem(`birdieBoardNextHole-${roundId}`);
     }
     // Realtime is the primary update path. This light fallback keeps spectator

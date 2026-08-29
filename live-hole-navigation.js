@@ -44,6 +44,8 @@
 
   document.addEventListener('change', event => {
     if (event.target.id !== 'livehole') return;
+    const route = liveRoute();
+    if (route) sessionStorage.setItem(`birdieBoardActiveHole-${route.roundId}`, event.target.value);
     document.getElementById('holeprogress')?.remove();
     renderHoleProgress();
   });
