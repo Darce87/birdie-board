@@ -8,14 +8,14 @@
     if (firstRow && !firstRow.previousElementSibling?.classList.contains('score-column-heading')) {
       const heading = document.createElement('p');
       heading.className = 'score-column-heading';
-      heading.textContent = 'Gross strokes';
+      heading.textContent = 'Gross';
       firstRow.before(heading);
     }
   };
 
   new MutationObserver(applyLiveScoreLabels).observe(document.body, { childList: true, subtree: true });
   const style = document.createElement('style');
-  style.textContent = '.score-column-heading{margin:18px 0 7px;text-align:right;color:#FCE300;font:700 .78rem/1.2 "DM Mono",monospace;letter-spacing:.09em;text-transform:uppercase}';
+  style.textContent = '#bb .score{grid-template-columns:1fr 48px}.score-column-heading{width:48px;margin:14px 0 4px auto;text-align:center;color:#cde3db;font:500 .64rem/1.2 "DM Mono",monospace;letter-spacing:.06em;text-transform:uppercase}';
   document.head.appendChild(style);
   applyLiveScoreLabels();
 })();
