@@ -21,7 +21,7 @@
     navigation.id = 'holeprogress';
     navigation.innerHTML = `<p class="hole-progress-label">Hole progress</p><div class="hole-progress">${[...picker.options].map(option => {
       const hole = Number(option.value), done = completed.has(hole), current = hole === Number(picker.value);
-      return `<button type="button" class="${done ? 'done' : ''} ${current ? 'current' : ''}" data-live-hole="${hole}" aria-label="${done ? 'Recorded' : 'Select'} hole ${hole}">${done ? '✓' : hole}</button>`;
+      return `<button type="button" class="${done ? 'done' : ''} ${current ? 'current' : ''}" data-live-hole="${hole}" aria-label="${done ? 'Recorded' : 'Select'} hole ${hole}">${hole}</button>`;
     }).join('')}</div>`;
     picker.closest('.field')?.before(navigation);
     picker.closest('.field').style.display = 'none';
@@ -41,6 +41,12 @@
     const route = liveRoute(), picker = document.getElementById('livehole');
     if (route && picker) sessionStorage.setItem(pendingKeyFor(route.roundId), picker.value);
   }, true);
+
+  document.addEventListener('change', event => {
+    if (event.target.id !== 'livehole') return;
+    document.getElementById('holeprogress')?.remove();
+    renderHoleProgress();
+  });
 
   new MutationObserver(renderHoleProgress).observe(document.body, { childList: true, subtree: true });
   const style = document.createElement('style');

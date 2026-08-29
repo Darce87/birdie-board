@@ -93,7 +93,7 @@
     const nextHole=Number(sessionStorage.getItem(`birdieBoardNextHole-${roundId}`));
     const holePicker=document.getElementById('livehole');
     if(holePicker&&Number.isInteger(nextHole)&&nextHole>=1&&nextHole<=18){
-      holePicker.value=String(nextHole);
+      holePicker.value=String(nextHole);holePicker.dispatchEvent(new Event('change',{bubbles:true}));
       sessionStorage.removeItem(`birdieBoardNextHole-${roundId}`);
     }
     // Realtime is the primary update path. This light fallback keeps spectator
